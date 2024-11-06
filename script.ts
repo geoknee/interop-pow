@@ -47,18 +47,35 @@ async function main() {
     const wallet0 = new ethers.Wallet(PRIVATE_KEY, provider0);
     const wallet1 = new ethers.Wallet(PRIVATE_KEY, provider1);
 
+    console.log(await provider0.getBalance(wallet0.address))
+
     // OPStack chains have a CreateX preinstall at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
     // we can use function deployCreate2(bytes32 salt, bytes memory initCode) public payable returns (address newContract)
 
-    const createX0 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, wallet0)
-    console.log(createX0)
-    const createX1 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, wallet1)
-    const salt = 0
-    const interopPoWAddress = await (await createX0.deployCreate2(salt, interopPoWContractArtifact.initCode, wallet0)).wait()
-    console.log("interopPoW deployed to ", interopPoWAddress)
+    const functionAbi =
+        [
+            "function computeCreate2Address(bytes32,bytes32) view returns (address)",
+            "function deployCreate2(bytes32,bytes) payable returns (address)",
+        ]
 
-    const worker0Address = await (await createX0.deployCreate2(salt, workerContractArtifact.initCode)).wait()
-    const worker1Address = await (await createX1.deployCreate2(salt, workerContractArtifact.initCode)).wait()
+    const createX0 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", functionAbi, wallet0)
+    const createX1 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", functionAbi, wallet1)
+    const salt = wallet0.address + "000000000000000000000000"
+    const initCodeHash = ethers.keccak256(interopPoWContractArtifact.bytecode.object)
+
+    const interopPoWAddress = await createX0.computeCreate2Address(salt, initCodeHash)
+    const codeAt = await provider0.getCode(interopPoWAddress)
+
+    if (codeAt != "") {
+        const tx = await createX0.deployCreate2(salt, interopPoWContractArtifact.bytecode.object)
+        await tx.wait()
+        console.log("interopPoW deployed to ", interopPoWAddress)
+    } else {
+        console.log("interopPoW already deployed to ", interopPoWAddress)
+    }
+
+    const worker0Address = await (await createX0.deployCreate2(salt, workerContractArtifact.bytecode.object)).wait()
+    const worker1Address = await (await createX1.deployCreate2(salt, workerContractArtifact.bytecode.object)).wait()
     console.log("workers deployed to ", worker0Address, worker1Address)
     // TODO we need both addresses to be the same, and actually we want to deploy them first and pass in the address to the 
     // entrypoint at either construction or runtime.
