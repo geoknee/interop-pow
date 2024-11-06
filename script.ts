@@ -47,7 +47,7 @@ async function main() {
     const wallet0 = new ethers.Wallet(PRIVATE_KEY, provider0);
     const wallet1 = new ethers.Wallet(PRIVATE_KEY, provider1);
 
-    console.log(await provider0.getBalance(wallet0.address))
+    console.log(ethers.formatEther(await provider0.getBalance(wallet0.address)))
 
     // OPStack chains have a CreateX preinstall at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
     // we can use function deployCreate2(bytes32 salt, bytes memory initCode) public payable returns (address newContract)
@@ -60,34 +60,101 @@ async function main() {
 
     const createX0 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", functionAbi, wallet0)
     const createX1 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", functionAbi, wallet1)
-    const salt = wallet0.address + "000000000000000000000000"
+    const salt = wallet0.address + "000000000000000000000000" // to conform with CreateX salt requirements.
+    console.log("salt", salt)
+    const guardedSalt = ethers.keccak256("0x000000000000000000000000" + wallet0.address.slice(2) + salt.slice(2))
+
+    // 0x0000000000000000000000005f49333E8433A8fF9CdbD83Cf10184f20D8FDf650x5f49333E8433A8fF9CdbD83Cf10184f20D8FDf65000000000000000000000000
+    // 0x0000000000000000000000005f49333E8433A8fF9CdbD83Cf10184f20D8FDf65
+    // 0xbebebebebebebebebebebebebebebebebebebebeff1212121212121212121212
+    // 0x5f49333E8433A8fF9CdbD83Cf10184f20D8FDf65000000000000000000000000
+
+
     const initCodeHash = ethers.keccak256(interopPoWContractArtifact.bytecode.object)
 
     const interopPoWAddress = await createX0.computeCreate2Address(salt, initCodeHash)
-    const codeAt = await provider0.getCode(interopPoWAddress)
-
-    if (codeAt != "") {
-        const tx = await createX0.deployCreate2(salt, interopPoWContractArtifact.bytecode.object)
+    let codeAt = await provider0.getCode(interopPoWAddress)
+    console.log(codeAt)
+    if (codeAt == "0x") {
+        const tx = await createX0.deployCreate2(guardedSalt, interopPoWContractArtifact.bytecode.object)
         await tx.wait()
         console.log("interopPoW deployed to ", interopPoWAddress)
     } else {
         console.log("interopPoW already deployed to ", interopPoWAddress)
     }
 
-    const worker0Address = await (await createX0.deployCreate2(salt, workerContractArtifact.bytecode.object)).wait()
-    const worker1Address = await (await createX1.deployCreate2(salt, workerContractArtifact.bytecode.object)).wait()
-    console.log("workers deployed to ", worker0Address, worker1Address)
-    // TODO we need both addresses to be the same, and actually we want to deploy them first and pass in the address to the 
-    // entrypoint at either construction or runtime.
+    const workerAddress = await createX0.computeCreate2Address(guardedSalt, ethers.keccak256(workerContractArtifact.bytecode.object))
+    codeAt = await provider0.getCode(workerAddress)
+    console.log(codeAt)
+    if (codeAt == "0x") {
+        const tx = await createX0.deployCreate2(salt, workerContractArtifact.bytecode.object)
+        await tx.wait()
+        console.log("worker deployed to ", workerAddress, "on chain 0")
+    } else {
+        console.log("worker already deployed to ", workerAddress, "on chain 0")
+    }
+
+    codeAt = await provider1.getCode(workerAddress)
+    createX0.connect(wallet1)
+    if (codeAt == "0x") {
+        const tx = await createX1.deployCreate2(guardedSalt, workerContractArtifact.bytecode.object)
+        await tx.wait()
+        console.log("worker deployed to ", workerAddress, "on chain 1")
+    } else {
+        console.log("worker already deployed to ", workerAddress, " on chain 1")
+    }
+
 
     // call entrypoint
-    const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi)
-    await interopPoW.run(worker0Address, [0, 1]) // launch everything
-
-
+    const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi, wallet0)
+    const tx = await interopPoW.run(workerAddress, [0, 1]) // launch everything
+    await tx.wait()
+    console.log("launched job...")
 
     // wait for event
-    await interopPoW.on("AllResults", x => console.log(x))
+
+    // // Event signature for Transfer (from ERC20 token standard, for example)
+    // const transferEventSignature = "Transfer(address,address,uint256)";
+    // const transferTopic = ethers.id(transferEventSignature);
+
+    // async function getTransferLogs(fromBlock: number, toBlock: number, fromAddress?: string, toAddress?: string) {
+    //     // Set up the filter
+    //     const filter: ethers.Filter = {
+    //         address: CONTRACT_ADDRESS, // Only logs from this contract address
+    //         fromBlock,
+    //         toBlock,
+    //         topics: [
+    //             transferTopic,            // The main topic (Transfer event signature)
+    //             fromAddress ? ethers.zeroPadValue(fromAddress, 32) : null, // Topic[1]: 'from' address, if specified
+    //             toAddress ? ethers.zeroPadValue(toAddress, 32) : null      // Topic[2]: 'to' address, if specified
+    //         ]
+    //     };
+
+    //     // Retrieve logs matching the filter
+    //     const logs = await provider.getLogs(filter);
+    //     return logs.map(log => {
+    //         // Parse each log to get event arguments
+    //         const parsedLog = ethers.Interface.parseLog(log);
+    //         return {
+    //             from: parsedLog.args.from,
+    //             to: parsedLog.args.to,
+    //             value: parsedLog.args.value.toString()
+    //         };
+    //     });
+    // }
+
+    // // Example usage
+    // (async () => {
+    //     try {
+    //         // Retrieve logs for the last 10000 blocks
+    //         const logs = await getTransferLogs(14000000, 14001000, "0xFromAddress", "0xToAddress");
+    //         console.log("Transfer Logs:", logs);
+    //     } catch (error) {
+    //         console.error("Error retrieving logs:", error);
+    //     }
+    // })();
+
+
 }
 
 main().catch((error) => {
