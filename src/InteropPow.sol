@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {IL2ToL2CrossDomainMessenger} from "./interfaces.sol";
 
 interface IInteropPoW {
-    function run(uint256[] memory chainIds) external;
+    function run(address workerAddress, uint256[] memory chainIds) external;
     function reportResults(bytes memory) external;
 
     event AllResults(bytes results);
@@ -16,22 +16,21 @@ interface IWorker {
 
 contract InteropPoW is IInteropPoW {
     IL2ToL2CrossDomainMessenger xdm = IL2ToL2CrossDomainMessenger(0x4200000000000000000000000000000000000023);
-    address target; // TODO this should be the Worker contract, same address on all chains
     bytes public allResults;
 
-    function run(uint256[] memory chainIds) public {
+    function run(address workerAddress, uint256[] memory chainIds) public {
         for (uint8 i = 0; i < chainIds.length; i++) {
-            runOnChain(chainIds[i]);
+            runOnChain(workerAddress, chainIds[i]);
         }
     }
 
-    function runOnChain(uint256 chainId) public {
+    function runOnChain(address workerAddress, uint256 chainId) public {
         // prepare the x-domain message
         bytes memory data =
             abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.sendMessage.selector, block.chainid, this);
 
         // send the x-domain message
-        xdm.sendMessage(chainId, target, data);
+        xdm.sendMessage(chainId, workerAddress, data);
     }
 
     function reportResults(bytes memory results) public {

@@ -11,16 +11,21 @@ const workerContractArtifactPath = path.resolve(
     __dirname,
     "./out/InteropPoW.sol/Worker.json"
 );
+const createXContractArtifactPath = path.resolve(
+    __dirname,
+    "./CreateX.json"
+);
 
 // Read the artifact JSON file
 const interopPoWContractArtifact = JSON.parse(fs.readFileSync(interopPoWContractArtifactPath, "utf8"));
 const workerContractArtifact = JSON.parse(fs.readFileSync(workerContractArtifactPath, "utf8"));
+const createXArtifact = JSON.parse(fs.readFileSync(workerContractArtifactPath, "utf8"));
 
 // Replace with your own RPC URL and Private Key
 const RPC_URL = "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID";
 
-// TODO generate a private key, ensure it has ETH on both chains
-const PRIVATE_KEY = "YOUR_PRIVATE_KEY"; // use same one on both chains
+// Ensure this account has ETH on both chains
+const PRIVATE_KEY = "0x7aed2cae4c5eaa08342edd3905e029981fce3daed9437729c4c56952ce840b18"; // 0x5f49333E8433A8fF9CdbD83Cf10184f20D8FDf65 
 
 
 // Network Name: Interop Devnet 0
@@ -42,34 +47,28 @@ async function main() {
     const wallet0 = new ethers.Wallet(PRIVATE_KEY, provider0);
     const wallet1 = new ethers.Wallet(PRIVATE_KEY, provider1);
 
-    // deploy entrypoint contract to chain 0
-    const interopPoWFactory = new ethers.ContractFactory(interopPoWContractArtifact.abi, interopPoWContractArtifact.bytecode, wallet0);
-    console.log("Deploying contract to chain 0...");
-    const interopPoW = await interopPoWFactory.deploy() as ethers.Contract & { run: () => Promise<void> };
-    await interopPoW.waitForDeployment()
-    console.log(`Contract deployed at: ${await interopPoW.getAddress()} `);
+    // OPStack chains have a CreateX preinstall at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
+    // we can use function deployCreate2(bytes32 salt, bytes memory initCode) public payable returns (address newContract)
 
-    // deploy worker to chain 0
-    const workerFactory0 = new ethers.ContractFactory(interopPoWContractArtifact.abi, interopPoWContractArtifact.bytecode, wallet0);
-    console.log("Deploying contract to chain 0...");
-    const worker0 = await workerFactory0.deploy();
-    await worker0.waitForDeployment()
-    console.log(`Contract deployed at: ${await worker0.getAddress()} `);
+    const createX = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, createXArtifact)
+    createX.connect(wallet0);
+    const salt = 0
+    const interopPoWAddress = await (await createX.deployCreate2(salt, interopPoWContractArtifact.initCode)).wait()
+    const worker0Address = await (await createX.deployCreate2(salt, workerContractArtifact.initCode)).wait()
+    createX.connect(wallet1)
+    const worker1Address = await (await createX.deployCreate2(salt, workerContractArtifact.initCode)).wait()
 
-    // deploy worker to chain 1
-    const workerFactory1 = new ethers.ContractFactory(interopPoWContractArtifact.abi, interopPoWContractArtifact.bytecode, wallet1);
-    console.log("Deploying contract to chain 0...");
-    const worker1 = await workerFactory1.deploy();
-    await worker1.waitForDeployment()
-    console.log(`Contract deployed at: ${await worker1.getAddress()} `);
+    // TODO we need both addresses to be the same, and actually we want to deploy them first and pass in the address to the 
+    // entrypoint at either construction or runtime.
 
     // call entrypoint
-    interopPoW.connect(wallet0);
-    await interopPoW.run()
+    const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi)
+    await interopPoW.run([0, 1]) // launch everything
+
+
 
     // wait for event
-
-
+    await interopPoW.on("AllResults", x => console.log(x))
 }
 
 main().catch((error) => {
