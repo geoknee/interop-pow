@@ -13,7 +13,6 @@ contract InteropPoWScript is Script {
         vm.startBroadcast();
 
         bytes memory results = w.compute();
-        console.logBytes(results);
 
         vm.stopBroadcast();
     }
