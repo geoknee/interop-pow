@@ -12,7 +12,9 @@ contract WorkerTest is Test {
     }
 
     function test_compute() public {
+        vm.warp(1641800);
         bytes memory results = w.compute();
+        console.log("found %s valid preimages", results.length);
         console.logBytes(results);
     }
 }

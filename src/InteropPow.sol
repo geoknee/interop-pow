@@ -15,15 +15,17 @@ interface IWorker {
 }
 
 contract Worker is IWorker {
-    bytes32 constant difficulty = bytes32(uint256(2 ** 64 - 1));
+    bytes32 constant difficulty = bytes32(uint256(2 ** 250 - 1));
 
     function compute() public view returns (bytes memory) {
-        bytes32 seed = blockhash(block.number - 1);
-        bytes memory results;
-        for (uint256 i = 0; i < 1000; i++) {
-            bytes32 hash = keccak256(abi.encodePacked(seed, i));
+        // uint8 seed = uint8(uint256(blockhash(block.number - 1))); // deterministic
+        uint8 seed = uint8(block.timestamp); // random
+        bytes memory results; // 2 bytes per preimage
+        for (uint8 i = 0; i < 256 - 1; i++) {
+            bytes memory preimage = bytes.concat(bytes1(seed), bytes1(i));
+            bytes32 hash = keccak256(preimage);
             if (hash < difficulty) {
-                results = bytes.concat(results, seed);
+                results = bytes.concat(results, preimage);
             }
         }
         return results;
