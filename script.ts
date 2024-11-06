@@ -50,20 +50,22 @@ async function main() {
     // OPStack chains have a CreateX preinstall at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
     // we can use function deployCreate2(bytes32 salt, bytes memory initCode) public payable returns (address newContract)
 
-    const createX = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, createXArtifact)
-    createX.connect(wallet0);
+    const createX0 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, wallet0)
+    console.log(createX0)
+    const createX1 = new ethers.Contract("0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", createXArtifact.abi, wallet1)
     const salt = 0
-    const interopPoWAddress = await (await createX.deployCreate2(salt, interopPoWContractArtifact.initCode)).wait()
-    const worker0Address = await (await createX.deployCreate2(salt, workerContractArtifact.initCode)).wait()
-    createX.connect(wallet1)
-    const worker1Address = await (await createX.deployCreate2(salt, workerContractArtifact.initCode)).wait()
+    const interopPoWAddress = await (await createX0.deployCreate2(salt, interopPoWContractArtifact.initCode, wallet0)).wait()
+    console.log("interopPoW deployed to ", interopPoWAddress)
 
+    const worker0Address = await (await createX0.deployCreate2(salt, workerContractArtifact.initCode)).wait()
+    const worker1Address = await (await createX1.deployCreate2(salt, workerContractArtifact.initCode)).wait()
+    console.log("workers deployed to ", worker0Address, worker1Address)
     // TODO we need both addresses to be the same, and actually we want to deploy them first and pass in the address to the 
     // entrypoint at either construction or runtime.
 
     // call entrypoint
     const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi)
-    await interopPoW.run([0, 1]) // launch everything
+    await interopPoW.run(worker0Address, [0, 1]) // launch everything
 
 
 
