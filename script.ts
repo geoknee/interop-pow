@@ -120,36 +120,48 @@ async function main() {
 
     // call entrypoint
     const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi, wallet0)
-    // const tx = await interopPoW.run(workerAddress, [11473209, 21473209]) // launch everything
-    const tx = await interopPoW.run(workerAddress, [21473209]) // launch only on the remote chain. the xdm does not allow sending to your own chain
+    const tx = await interopPoW.run(workerAddress, [11473209, 21473209], {
+        gasLimit: 800_000,
+    }) // launch everything
+    // const tx = await interopPoW.run(workerAddress, [21473209]) // launch only on the remote chain. the xdm does not allow sending to your own chain
     console.log("🗳️ interopPoW.run() tx launching with hash", tx.hash)
     await tx.wait()
     console.log("⚒️ tx confirmed")
 
+
+    async function queryState() {
+        console.log("\nQuerying results...", period * counter++, "ms");
+
+        const log0 = await worker0.localResultLog()
+        console.log("worker0 (LOCAL) cached results have length:", log0.slice(2).length)
+
+        const log1 = await worker1.localResultLog()
+        console.log("worker1 (REMOTE) cached results have length:", log1.slice(2).length)
+
+        const aR = await interopPoW.allResults()
+        console.log("InteropPoW.allResults has length:", aR.slice(2).length)
+
+    }
     // wait for event
     // event subscriptions are not supported, so we resort
     // to short polling
-    console.log("🗣️ polling for state every 1s...")
-
+    const period = 500; // ms
+    console.log("🗣️ polling for state every", period, "ms...")
     let counter = 0;
-    const interval = setInterval(async () => {
-        // Code to run every 1 second
-        console.log("\nQuerying results...", counter++);
 
-        const log0 = await worker0.localResultLog()
-        console.log("worker0 (LOCAL) cached result:", log0)
-        const log1 = await worker1.localResultLog()
-        console.log("worker1 (REMOTE) cached result:", log1)
-
-        const aR = await interopPoW.allResults()
-        console.log("allResults:", aR)
-
-        // Stop the interval after 10 executions
-        if (counter >= 10) {
-            clearInterval(interval);
-            console.log("Finished after 10 seconds");
+    async function runInterval() {
+        try {
+            const result = await queryState();
+            console.log(result);
+        } catch (error) {
+            console.error("Error:", error);
+        } finally {
+            setTimeout(runInterval, period); // Schedule the next run after completion
         }
-    }, 2000); // 1000 ms = 1 second
+    }
+
+    // Start the first interval
+    runInterval();
 
 }
 

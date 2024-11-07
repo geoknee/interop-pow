@@ -19,6 +19,7 @@ contract InteropPoW is IInteropPoW {
     bytes public allResults; // currently this is append only
 
     function run(address workerAddress, uint256[] memory chainIds) public {
+        delete(allResults);
         for (uint8 i = 0; i < chainIds.length; i++) {
             runOnChain(workerAddress, chainIds[i]);
         }
@@ -56,6 +57,8 @@ contract Worker is IWorker {
     bytes32 constant difficulty = bytes32(uint256(2 ** 250 - 1));
 
     function run(uint256 returnDestination, address returnAddress) public {
+        delete(localResultLog);
+
         // Do the computation
         bytes memory results = compute();
 
