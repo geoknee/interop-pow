@@ -16,7 +16,7 @@ interface IWorker {
 
 contract InteropPoW is IInteropPoW {
     IL2ToL2CrossDomainMessenger xdm = IL2ToL2CrossDomainMessenger(0x4200000000000000000000000000000000000023);
-    bytes public allResults;
+    bytes public allResults; // currently this is append only
 
     function run(address workerAddress, uint256[] memory chainIds) public {
         for (uint8 i = 0; i < chainIds.length; i++) {

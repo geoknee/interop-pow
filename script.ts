@@ -68,18 +68,16 @@ async function main() {
 
     const interopPoWAddress = await createX0.computeCreate2Address(guardedSalt, initCodeHash)
     let codeAt = await provider0.getCode(interopPoWAddress)
-    console.log(codeAt)
     if (codeAt == "0x") {
         const tx = await createX0.deployCreate2(salt, interopPoWContractArtifact.bytecode.object)
         await tx.wait()
-        console.log("interopPoW deployed to ", interopPoWAddress)
+        console.log("interopPoW deployed to ", interopPoWAddress, " on chain 0")
     } else {
-        console.log("interopPoW already deployed to ", interopPoWAddress)
+        console.log("interopPoW already deployed to ", interopPoWAddress, " on chain 0")
     }
 
     const workerAddress = await createX0.computeCreate2Address(guardedSalt, ethers.keccak256(workerContractArtifact.bytecode.object))
     codeAt = await provider0.getCode(workerAddress)
-    console.log(codeAt)
     if (codeAt == "0x") {
         const tx = await createX0.deployCreate2(salt, workerContractArtifact.bytecode.object)
         await tx.wait()
@@ -106,15 +104,16 @@ async function main() {
     console.log("launched job...")
 
     // wait for event
+    // event subscriptions are not supported, so we resort
+    // to short polling
     console.log("polling for state every 1s...")
 
     let counter = 0;
     const interval = setInterval(async () => {
         // Code to run every 1 second
-        console.log("Running code:", counter + 1);
+        console.log("Querying results...", counter++);
         const aR = await interopPoW.allResults()
-        console.log(aR)
-        counter += 1;
+        console.log("allResults:", aR)
 
         // Stop the interval after 10 executions
         if (counter >= 10) {
