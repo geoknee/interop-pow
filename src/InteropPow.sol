@@ -25,11 +25,17 @@ contract InteropPoW is IInteropPoW {
     }
 
     function runOnChain(address workerAddress, uint256 chainId) public {
-        // prepare the x-domain message
-        bytes memory data = abi.encodeWithSelector(IWorker.run.selector, block.chainid, this);
+        if (chainId == block.chainid) {
+            // if we want to execute on the local chain, do this synchronously
+            // and do not launch an async job
+            IWorker(workerAddress).run(block.chainid, address(this));
+        } else {
+            // prepare the x-domain message
+            bytes memory data = abi.encodeWithSelector(IWorker.run.selector, block.chainid, this);
 
-        // send the x-domain message
-        xdm.sendMessage(chainId, workerAddress, data);
+            // send the x-domain message
+            xdm.sendMessage(chainId, workerAddress, data);
+        }
     }
 
     function reportResults(bytes memory results) public {
@@ -58,11 +64,17 @@ contract Worker is IWorker {
             localResultLog.push(results[i]);
         }
 
-        // Prepare the X-domain message
-        bytes memory data = abi.encodeWithSelector(IInteropPoW.reportResults.selector, results);
+        if (returnDestination == block.chainid) {
+            // if we want to execute on the local chain, do this synchronously
+            // and do not launch an async job
+            IInteropPoW(returnAddress).reportResults(results);
+        } else {
+            // Prepare the X-domain message
+            bytes memory data = abi.encodeWithSelector(IInteropPoW.reportResults.selector, results);
 
-        // Send the X-domain message
-        xdm.sendMessage(returnDestination, returnAddress, data);
+            // Send the X-domain message
+            xdm.sendMessage(returnDestination, returnAddress, data);
+        }
     }
 
     function compute() public view returns (bytes memory) {

@@ -96,14 +96,13 @@ async function main() {
         console.log("worker already deployed to ", workerAddress, " on chain 1")
     }
 
-    const worker0 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet0)
-    const worker1 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet1)
-
+    // const worker0 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet0)
+    // const worker1 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet1)
 
     // call entrypoint
     const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi, wallet0)
-    // const tx = await interopPoW.run(workerAddress, [11473209, 21473209]) // launch everything
-    const tx = await interopPoW.run(workerAddress, [21473209]) // launch only on the remote chain. the xdm does not allow sending to your own chain
+    const tx = await interopPoW.run(workerAddress, [11473209, 21473209]) // launch everything
+    // const tx = await interopPoW.run(workerAddress, [21473209]) // launch only on the remote chain. the xdm does not allow sending to your own chain
     console.log("interopPoW.run() tx launched with hash", tx.hash)
     await tx.wait()
     console.log("launched job...")
@@ -118,10 +117,10 @@ async function main() {
         // Code to run every 1 second
         console.log("Querying results...", counter++);
 
-        const log0 = await worker0.localResultLog()
-        console.log("worker1 local reusult:", log0)
-        const log1 = await worker1.localResultLog()
-        console.log("worker1 local reusult:", log1)
+        // const log0 = await worker0.localResultLog()
+        // console.log("worker1 local reusult:", log0)
+        // const log1 = await worker1.localResultLog()
+        // console.log("worker1 local reusult:", log1)
 
         const aR = await interopPoW.allResults()
         console.log("allResults:", aR)
