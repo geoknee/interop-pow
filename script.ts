@@ -1,6 +1,9 @@
 import { ethers } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 // Load ABI and Bytecode from the neighboring Foundry project
 const interopPoWContractArtifactPath = path.resolve(
@@ -11,10 +14,7 @@ const workerContractArtifactPath = path.resolve(
     __dirname,
     "./out/InteropPoW.sol/Worker.json"
 );
-const createXContractArtifactPath = path.resolve(
-    __dirname,
-    "./CreateX.json"
-);
+
 
 // Read the artifact JSON file
 const interopPoWContractArtifact = JSON.parse(fs.readFileSync(interopPoWContractArtifactPath, "utf8"));
@@ -25,7 +25,7 @@ const createXArtifact = JSON.parse(fs.readFileSync(workerContractArtifactPath, "
 const RPC_URL = "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID";
 
 // Ensure this account has ETH on both chains
-const PRIVATE_KEY = "0x7aed2cae4c5eaa08342edd3905e029981fce3daed9437729c4c56952ce840b18"; // 0x5f49333E8433A8fF9CdbD83Cf10184f20D8FDf65 
+const PRIVATE_KEY = process.env.PRIVATE_KEY as string; // 0x5f49333E8433A8fF9CdbD83Cf10184f20D8FDf65 
 
 
 // Network Name: Interop Devnet 0
@@ -47,7 +47,7 @@ async function main() {
     const wallet0 = new ethers.Wallet(PRIVATE_KEY, provider0);
     const wallet1 = new ethers.Wallet(PRIVATE_KEY, provider1);
 
-    console.log(ethers.formatEther(await provider0.getBalance(wallet0.address)))
+    console.log("balance is ", ethers.formatEther(await provider0.getBalance(wallet0.address)), "on chain 0")
 
     // OPStack chains have a CreateX preinstall at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
     // we can use function deployCreate2(bytes32 salt, bytes memory initCode) public payable returns (address newContract)
@@ -99,7 +99,7 @@ async function main() {
 
     // call entrypoint
     const interopPoW = new ethers.Contract(interopPoWAddress, interopPoWContractArtifact.abi, wallet0)
-    const tx = await interopPoW.run(workerAddress, [0, 1]) // launch everything
+    const tx = await interopPoW.run(workerAddress, [11473209, 21473209]) // launch everything
     await tx.wait()
     console.log("launched job...")
 
