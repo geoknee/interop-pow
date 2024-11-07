@@ -96,6 +96,7 @@ async function main() {
         console.log("worker already deployed to ", workerAddress, " on chain 1")
     }
 
+    const worker0 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet0)
     const worker1 = new ethers.Contract(workerAddress, workerContractArtifact.abi, wallet1)
 
 
@@ -116,6 +117,9 @@ async function main() {
     const interval = setInterval(async () => {
         // Code to run every 1 second
         console.log("Querying results...", counter++);
+
+        const log0 = await worker0.localResultLog()
+        console.log("worker1 local reusult:", log0)
         const log1 = await worker1.localResultLog()
         console.log("worker1 local reusult:", log1)
 

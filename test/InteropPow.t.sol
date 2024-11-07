@@ -11,16 +11,16 @@ contract WorkerTest is Test {
         w = new Worker();
     }
 
-    // function test_compute() public {
-    //     for (uint8 i = 0; i < 256 - 1; i++) {
-    //         vm.warp(i);
-    //         bytes memory results = w.compute();
-    //         console.log("found %s valid preimages", results.length / 32);
-    //     }
-    // }
-
-    function test_run() public {
-        // there's no L2toL2XDM in foundry so this won't work
-        w.run(11473209, 0x3f92E7eaEA140ca28689C46414a026da58E01650);
+    function test_compute() public {
+        for (uint8 i = 0; i < 256 - 1; i++) {
+            vm.warp(i);
+            bytes memory results = w.compute();
+            console.log("found %s valid preimages", results.length / 32);
+        }
     }
+
+    // function test_run() public {
+    //     // there's no L2toL2XDM in foundry so this won't work
+    //     w.run(11473209, 0x3f92E7eaEA140ca28689C46414a026da58E01650);
+    // }
 }
