@@ -129,18 +129,20 @@ async function main() {
     console.log("⚒️ tx confirmed")
 
 
+    var log0: string
+    var log1: string
+    var aR: string
     async function queryState() {
         console.log("\nQuerying results...", period * counter++, "ms");
 
-        const log0 = await worker0.localResultLog()
+        log0 = await worker0.localResultLog()
         console.log("worker0 (LOCAL) cached results have length:", log0.slice(2).length)
 
-        const log1 = await worker1.localResultLog()
+        log1 = await worker1.localResultLog()
         console.log("worker1 (REMOTE) cached results have length:", log1.slice(2).length)
 
-        const aR = await interopPoW.allResults()
+        aR = await interopPoW.allResults()
         console.log("InteropPoW.allResults has length:", aR.slice(2).length)
-
     }
     // wait for event
     // event subscriptions are not supported, so we resort
@@ -150,12 +152,16 @@ async function main() {
     let counter = 0;
 
     async function runInterval() {
+        if (counter > 20 ||
+            aR && log0 && log1 && aR.slice(2).length == log0.slice(2).length + log1.slice(2).length) {
+            return
+        }
         try {
-            const result = await queryState();
-            console.log(result);
+            await queryState();
         } catch (error) {
             console.error("Error:", error);
         } finally {
+            counter++
             setTimeout(runInterval, period); // Schedule the next run after completion
         }
     }
