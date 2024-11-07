@@ -33,8 +33,8 @@ sequenceDiagram
         Wb->>xB: relayMessage"reportResults()"
       deactivate Wb
       xB ->> R: emit SentMessage("reportResults()")
-      R->> xB: relayMessage("reportResults()")
-      xB->>IP: reportResults()
+      R->> xA: relayMessage("reportResults()")
+      xA->>IP: reportResults()
     end
 		
 		IP->>U: Emit "All Results" 
