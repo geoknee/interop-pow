@@ -88,3 +88,7 @@ InteropPoW.allResults has length: 512
 
 You can see we get the local results within one block.
 The remote results come back within a couple of seconds. 
+
+
+https://github.com/user-attachments/assets/957d81dd-4d55-46b2-9e77-e422c76eab13
+
