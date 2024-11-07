@@ -135,14 +135,15 @@ async function main() {
     async function queryState() {
         console.log("\nQuerying results...", period * counter++, "ms");
 
+        aR = await interopPoW.allResults()
+        console.log("InteropPoW.allResults has length:", aR.slice(2).length)
+
         log0 = await worker0.localResultLog()
         console.log("worker0 (LOCAL) cached results have length:", log0.slice(2).length)
 
         log1 = await worker1.localResultLog()
         console.log("worker1 (REMOTE) cached results have length:", log1.slice(2).length)
 
-        aR = await interopPoW.allResults()
-        console.log("InteropPoW.allResults has length:", aR.slice(2).length)
     }
     // wait for event
     // event subscriptions are not supported, so we resort
