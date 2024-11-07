@@ -26,8 +26,7 @@ contract InteropPoW is IInteropPoW {
 
     function runOnChain(address workerAddress, uint256 chainId) public {
         // prepare the x-domain message
-        bytes memory data =
-            abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.sendMessage.selector, block.chainid, this);
+        bytes memory data = abi.encodeWithSelector(IWorker.run.selector, block.chainid, this);
 
         // send the x-domain message
         xdm.sendMessage(chainId, workerAddress, data);
@@ -46,15 +45,21 @@ contract InteropPoW is IInteropPoW {
 }
 
 contract Worker is IWorker {
+    bytes public localResultLog; // currently this is append only
     IL2ToL2CrossDomainMessenger xdm = IL2ToL2CrossDomainMessenger(0x4200000000000000000000000000000000000023);
     bytes32 constant difficulty = bytes32(uint256(2 ** 250 - 1));
 
-    function run(uint256 returnDestination, address returnAddress) external {
+    function run(uint256 returnDestination, address returnAddress) public {
         // Do the computation
         bytes memory results = compute();
 
+        // add results to global storage variable
+        for (uint256 i = 0; i < results.length; i++) {
+            localResultLog.push(results[i]);
+        }
+
         // Prepare the X-domain message
-        bytes memory data = abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.sendMessage.selector, results);
+        bytes memory data = abi.encodeWithSelector(IInteropPoW.reportResults.selector, results);
 
         // Send the X-domain message
         xdm.sendMessage(returnDestination, returnAddress, data);
